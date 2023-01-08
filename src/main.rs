@@ -1,11 +1,11 @@
 #![feature(slice_as_chunks)]
 
-use std::{time::Duration, collections::hash_map::DefaultHasher, hash::{Hash, Hasher}, error::Error};
+use std::{time::Duration, collections::hash_map::DefaultHasher, hash::{Hash, Hasher}, error::Error, str::FromStr};
 
 use async_std::io;
 use futures::{prelude::*, select};
 use libp2p::{
-    core, gossipsub, identity, mdns, swarm::NetworkBehaviour, swarm::SwarmEvent, PeerId, Swarm, tcp, Transport, noise, yamux
+    core, gossipsub, identity, identify, ping, swarm::NetworkBehaviour, swarm::SwarmEvent, Multiaddr, PeerId, Swarm, tcp, Transport, noise, yamux
 };
 use solana_sdk;
 
@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Set up an encrypted DNS-enabled TCP Transport over the Mplex protocol.
     let transport = tcp::async_io::Transport::default()
     .upgrade(core::upgrade::Version::V1)
-    .authenticate(noise::NoiseAuthenticated::xx(&local_key)?)
+    .authenticate(noise::NoiseAuthenticated::xx(&local_key.clone())?)
     .multiplex(yamux::YamuxConfig::default())
     .boxed();
 
@@ -34,7 +34,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     #[derive(NetworkBehaviour)]
     struct MyBehaviour {
         gossipsub: gossipsub::Gossipsub,
-        mdns: mdns::async_io::Behaviour,
+        identify: identify::Behaviour,
+        ping: ping::Behaviour,
     }
 
     /*
@@ -60,7 +61,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .expect("Valid config");
 
      // build a gossipsub network behaviour
-     let mut gossipsub = gossipsub::Gossipsub::new(gossipsub::MessageAuthenticity::Signed(local_key), gossipsub_config)
+     let mut gossipsub = gossipsub::Gossipsub::new(gossipsub::MessageAuthenticity::Signed(local_key.clone()), gossipsub_config)
      .expect("Correct configuration");
 
 
@@ -70,19 +71,33 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // subscribes to our topic
     gossipsub.subscribe(&topic)?;
 
+    let identify = identify::Behaviour::new(identify::Config::new(
+        "/ipfs/0.1.0".into(),
+        local_key.public(),
+    ));
+
+    let ping = ping::Behaviour::new(ping::Config::new());
+
+
     // Create a Swarm to manage peers and events
     let mut swarm = {
-        let mdns = mdns::async_io::Behaviour::new(mdns::Config::default(), local_peer_id)?;
-        let behaviour = MyBehaviour { gossipsub, mdns };
+        let behaviour = MyBehaviour { gossipsub, identify, ping };
         Swarm::with_async_std_executor(transport, behaviour, local_peer_id)
     };
 
 
+    // Reach out to other nodes if specified
+    for to_dial in std::env::args().skip(1) {
+        let addr = Multiaddr::from_str(&to_dial)?;
+        swarm.dial(addr)?;
+        println!("Dialed {to_dial:?}")
+    }
+
     // Read full lines from stdin
     let mut stdin = io::BufReader::new(io::stdin()).lines().fuse();
 
-    // Listen on all interfaces and whatever port the OS assigns
-    swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+    // Listen on all interfaces
+    swarm.listen_on("/ip4/0.0.0.0/tcp/8765".parse()?)?;
 
     println!("Enter messages via STDIN and they will be sent to connected peers using Gossipsub");
 
@@ -91,34 +106,75 @@ async fn main() -> Result<(), Box<dyn Error>> {
         select! {
             line = stdin.select_next_some() => {
                 if let Err(e) = swarm
-                    .behaviour_mut().gossipsub
-                    .publish(topic.clone(), line.expect("Stdin not to close").as_bytes()) {
+                    .behaviour_mut()
+                    .gossipsub
+                    .publish(topic.clone(), line.expect("Stdin not to close").as_bytes())
+                {
                     println!("Publish error: {e:?}");
                 }
             },
-            event = swarm.select_next_some() => match event {
-                SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
-                    for (peer_id, _multiaddr) in list {
-                        println!("mDNS discovered a new peer: {peer_id}");
-                        swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+            event = swarm.select_next_some() => {
+                match event {
+                    SwarmEvent::NewListenAddr { address, .. } => {
+                        println!("Listening on {address:?}");
                     }
-                },
-                SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
-                    for (peer_id, _multiaddr) in list {
-                        println!("mDNS discover peer has expired: {peer_id}");
-                        swarm.behaviour_mut().gossipsub.remove_explicit_peer(&peer_id);
+                    SwarmEvent::Behaviour(MyBehaviourEvent::Identify(event)) => {
+                        println!("identify: {event:?}");
                     }
-                },
-                SwarmEvent::Behaviour(MyBehaviourEvent::Gossipsub(gossipsub::GossipsubEvent::Message {
-                    propagation_source: peer_id,
-                    message_id: id,
-                    message,
-                })) => println!(
-                        "Got message: '{}' with id: {id} from peer: {peer_id}",
-                        String::from_utf8_lossy(&message.data),
-                    ),
-                _ => {}
+                    SwarmEvent::Behaviour(MyBehaviourEvent::Gossipsub(gossipsub::GossipsubEvent::Message {
+                        propagation_source: peer_id,
+                        message_id: id,
+                        message,
+                    })) => {
+                        println!(
+                            "Got message: {} with id: {} from peer: {:?}",
+                            String::from_utf8_lossy(&message.data),
+                            id,
+                            peer_id
+                        )
+                    }
+                    SwarmEvent::Behaviour(MyBehaviourEvent::Ping(event)) => {
+                        match event {
+                            ping::Event {
+                                peer,
+                                result: Result::Ok(ping::Success::Ping { rtt }),
+                            } => {
+                                println!(
+                                    "ping: rtt to {} is {} ms",
+                                    peer.to_base58(),
+                                    rtt.as_millis()
+                                );
+                            }
+                            ping::Event {
+                                peer,
+                                result: Result::Ok(ping::Success::Pong),
+                            } => {
+                                println!("ping: pong from {}", peer.to_base58());
+                            }
+                            ping::Event {
+                                peer,
+                                result: Result::Err(ping::Failure::Timeout),
+                            } => {
+                                println!("ping: timeout to {}", peer.to_base58());
+                            }
+                            ping::Event {
+                                peer,
+                                result: Result::Err(ping::Failure::Unsupported),
+                            } => {
+                                println!("ping: {} does not support ping protocol", peer.to_base58());
+                            }
+                            ping::Event {
+                                peer,
+                                result: Result::Err(ping::Failure::Other { error }),
+                            } => {
+                                println!("ping: ping::Failure with {}: {error}", peer.to_base58());
+                            }
+                        }
+                    }
+                    _ => {}
+                }
             }
         }
     }
 }
+

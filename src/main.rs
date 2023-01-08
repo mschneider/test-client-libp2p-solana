@@ -11,6 +11,7 @@ use solana_sdk;
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    // Derive peer id from solana keypair
     let solana_keypair = solana_sdk::signature::Keypair::new();
     let mut copy = solana_keypair.secret().as_bytes().clone();
     let secret_key = identity::ed25519::SecretKey::from_bytes(copy)?;
@@ -20,15 +21,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Set up an encrypted DNS-enabled TCP Transport over the Mplex protocol.
     let transport = tcp::async_io::Transport::default()
-    .upgrade(core::upgrade::Version::V1)
-    .authenticate(noise::NoiseAuthenticated::xx(&local_key.clone())?)
-    .multiplex(yamux::YamuxConfig::default())
-    .boxed();
-
-    // let shred = [0u8; 1280];
-    // for i in 0..1280 {
-    //     shred[i] = i as u8
-    // }
+        .upgrade(core::upgrade::Version::V1)
+        .authenticate(noise::NoiseAuthenticated::xx(&local_key.clone())?)
+        .multiplex(yamux::YamuxConfig::default())
+        .boxed();
 
     // We create a custom network behaviour that combines Gossipsub and Mdns.
     #[derive(NetworkBehaviour)]
@@ -41,26 +37,30 @@ async fn main() -> Result<(), Box<dyn Error>> {
     /*
     // To content-address message, we can take the embedded signature of the shred and use it as an ID.
     let message_id_fn = |message: &gossipsub::GossipsubMessage| {
-        gossipsub::MessageId::from(message.data.as_chunks::<24>().0[0])
     };
     */
 
-        // To content-address message, we can take the hash of message and use it as an ID.
-        let message_id_fn = |message: &gossipsub::GossipsubMessage| {
-            let mut s = DefaultHasher::new();
-            message.data.hash(&mut s);
-            gossipsub::MessageId::from(s.finish().to_string())
-        };
+    // To content-address message, we can take the hash of message and use it as an ID.
+    let message_id_fn = |message: &gossipsub::GossipsubMessage| {
+        let mut s = DefaultHasher::new();
+        message.data.hash(&mut s);
+        // TODO: replace with signature data from shred
+        // gossipsub::MessageId::from(message.data.as_chunks::<24>().0[0])
+        gossipsub::MessageId::from(s.finish().to_string())
+    };
 
     // Set a custom gossipsub configuration
     let gossipsub_config = gossipsub::GossipsubConfigBuilder::default()
     .heartbeat_interval(Duration::from_secs(10)) // This is set to aid debugging by not cluttering the log space
+    // .heartbeat_interval(Duration::from_millis(200)) // Heartbeat 2-3 times per block to make sure shreds are sent out quickly
     .validation_mode(gossipsub::ValidationMode::Strict) // This sets the kind of message validation. The default is Strict (enforce message signing)
-    .message_id_fn(message_id_fn) // content-address messages. No two messages of the same content will be propagated.
+    // .validation_mode(gossipsub::ValidationMode::None) // This disables message validation by libp2p
+    // .validate_messages() // TODO: manually validate shreds
+    .message_id_fn(message_id_fn) // TODO: manually identify shreds
     .build()
     .expect("Valid config");
 
-     // build a gossipsub network behaviour
+     // Build a gossipsub network behaviour
      let mut gossipsub = gossipsub::Gossipsub::new(gossipsub::MessageAuthenticity::Signed(local_key.clone()), gossipsub_config)
      .expect("Correct configuration");
 
@@ -71,20 +71,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // subscribes to our topic
     gossipsub.subscribe(&topic)?;
 
+
+    // Build an identify network behaviour
     let identify = identify::Behaviour::new(identify::Config::new(
-        "/ipfs/0.1.0".into(),
+        "/solana/1.15.0".into(),
         local_key.public(),
     ));
 
+    // Build a ping network behaviour
     let ping = ping::Behaviour::new(ping::Config::new());
 
 
-    // Create a Swarm to manage peers and events
+    // Create a Swarm to manage peers and events from behaviours
     let mut swarm = {
         let behaviour = MyBehaviour { gossipsub, identify, ping };
         Swarm::with_async_std_executor(transport, behaviour, local_peer_id)
     };
-
 
     // Reach out to other nodes if specified
     for to_dial in std::env::args().skip(1) {

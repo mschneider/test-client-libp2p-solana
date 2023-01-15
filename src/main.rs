@@ -6,8 +6,9 @@ use std::{sync::Arc, time::Duration};
 
 use clique_stage::{CliqueStageConfig, CliqueStage};
 use crossbeam_channel::{unbounded, tick, select};
-use rand::{random};
+use rand::{random, RngCore};
 use simplelog::*;
+use solana_perf::packet::PACKET_DATA_SIZE;
 use solana_sdk::signature::Keypair;
 
 
@@ -35,7 +36,9 @@ fn main() -> Result<(), String> {
         select! {
             recv(timer) -> _ => {
                 info!("clique outbound");
-                clique_outbound_sender.send(vec![vec![1, 2, 3]]).expect("outbound send")
+                let mut packet = [0u8; PACKET_DATA_SIZE];
+                rand::thread_rng().fill_bytes(&mut packet);
+                clique_outbound_sender.send(vec![packet.to_vec()]).expect("outbound send")
             },
             recv(clique_inbound_receiver) -> inbound => {
                 match inbound {

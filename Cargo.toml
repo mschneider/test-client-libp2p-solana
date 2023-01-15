@@ -8,6 +8,14 @@ edition = "2021"
 [dependencies]
 async-std = { version = "1.6.2", features = ["attributes"] }
 async-trait = "0.1"
+crossbeam-channel = "0.5"
 futures = "0.3.1"
+futures-lite = "1.12.0"
+log = "0.4.17"
+rand = "0.7.0"
+simplelog = "0.12.0"
+
 libp2p = { path = "../rust-libp2p", features=["async-std", "gossipsub", "identify", "macros", "noise", "ping", "tcp", "yamux"] }
 solana-sdk = { version = "1.15.0", path = "../solana/sdk" }
+solana-perf = { version = "1.15.0", path = "../solana/perf" }
+solana-logger = { version = "1.15.0", path = "../solana/logger" }

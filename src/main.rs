@@ -29,20 +29,22 @@ fn main() -> Result<(), String> {
     let clique_stage = CliqueStage::new(config, clique_outbound_receiver, clique_inbound_sender);
 
     info!("timer");
-    let timer = tick(Duration::from_secs(1 + random::<u64>() % 16));
+    let timer = tick(Duration::from_secs(1));
     
     info!("select loop");
+
+    let mut num_inbound_packets = 0;
     loop {
         select! {
             recv(timer) -> _ => {
-                info!("clique outbound");
+                info!("clique outbound - inbound: {}", num_inbound_packets);
                 let mut packet = [0u8; PACKET_DATA_SIZE];
                 rand::thread_rng().fill_bytes(&mut packet);
                 clique_outbound_sender.send(vec![packet.to_vec()]).expect("outbound send")
             },
             recv(clique_inbound_receiver) -> inbound => {
                 match inbound {
-                    Ok(packets) => info!("clique inbound {} packets", packets.len()),
+                    Ok(packets) => num_inbound_packets += packets.len(),
                     Err(e) => error!("clique inbound {}", e),
                 }
             }

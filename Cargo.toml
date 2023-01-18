@@ -19,3 +19,4 @@ libp2p = { path = "../rust-libp2p", features=["async-std", "gossipsub", "identif
 solana-sdk = { version = "1.15.0", path = "../solana/sdk" }
 solana-perf = { version = "1.15.0", path = "../solana/perf" }
 solana-logger = { version = "1.15.0", path = "../solana/logger" }
+solana-metrics = { version = "1.15.0", path = "../solana/metrics" }

@@ -8,7 +8,7 @@ use std::{
     },
     task::{Context, Poll},
     thread::{Builder, JoinHandle},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use crossbeam_channel::{Receiver, Sender};
@@ -19,12 +19,48 @@ use libp2p::{
     tcp, yamux, Multiaddr, PeerId, Swarm, Transport,
 };
 use log::info;
-use solana_perf::packet::{Meta, Packet, PacketBatch, PACKET_DATA_SIZE};
+use solana_perf::packet::{Meta, Packet, PacketBatch, PACKET_DATA_SIZE, PacketFlags};
 
 pub struct CliqueStageConfig {
+    pub listen_port: u16,
     pub identity_keypair: Arc<solana_sdk::signature::Keypair>,
     pub exit: Arc<AtomicBool>,
 }
+
+
+struct CliqueStageStats {
+    since: Instant,
+    shreds_inbound: usize,
+    shreds_outbound: usize,
+    publish_errors: usize,
+}
+
+impl CliqueStageStats {
+    const METRICS_SUBMIT_CADENCE: Duration = Duration::from_secs(2);
+
+    fn new() -> Self {
+        Self {
+            since: Instant::now(),
+            shreds_inbound: 0usize,
+            shreds_outbound: 0usize,
+            publish_errors: 0usize,
+        }
+    }
+
+    fn maybe_submit(&mut self) {
+        if self.since.elapsed() <= Self::METRICS_SUBMIT_CADENCE {
+            return;
+        }
+        datapoint_info!(
+            "clique_stage",
+            ("shreds_inbound", self.shreds_inbound, i64),
+            ("shreds_outbound", self.shreds_outbound, i64),
+            ("publish_errors", self.publish_errors, i64),
+        );
+        *self = Self::new();
+    }
+}
+
 
 #[derive(NetworkBehaviour)]
 struct SolanaCliqueBehaviour {
@@ -46,6 +82,8 @@ impl CliqueStage {
         let clique_thread_hdl = Builder::new()
             .name("solClique".to_string())
             .spawn(move || {
+
+                
                 // Derive peer id from solana keypair
                 let mut copy = config.identity_keypair.secret().as_bytes().clone();
                 let secret_key = identity::ed25519::SecretKey::from_bytes(copy)
@@ -76,7 +114,8 @@ impl CliqueStage {
                     message.data.hash(&mut s);
                     // TODO: replace with signature data from shred
                     // gossipsub::MessageId::from(message.data.as_chunks::<24>().0[0])
-                    gossipsub::MessageId::from(s.finish().to_string())
+                    let hash = s.finish().to_string();
+                    gossipsub::MessageId::from(hash)
                 };
 
                 // Set a custom gossipsub configuration
@@ -136,29 +175,42 @@ impl CliqueStage {
                 // Listen on all interfaces
                 swarm
                     .listen_on(
-                        "/ip4/0.0.0.0/tcp/8765"
+                        format!("/ip4/0.0.0.0/tcp/{}", config.listen_port)
                             .parse()
-                            .expect("CliqueStage valid listen Multiaddr"),
+                            .expect("CliqueStage valid listen_port"),
                     )
                     .expect("CliqueStage listen succeeds");
 
                 let waker = noop_waker();
                 let mut cx = Context::from_waker(&waker);
+                let mut stats = CliqueStageStats::new();
 
                 loop {
                     if config.exit.load(Ordering::Relaxed) {
                         break;
                     }
 
+                    stats.maybe_submit();
+
                     if let Ok(outbound) = clique_outbound_receiver.try_recv() {
                         for shred in outbound.iter() {
+                            stats.shreds_outbound += 1;
                             if let Err(e) = swarm
                                 .behaviour_mut()
                                 .gossipsub
                                 .publish(topic.clone(), shred.as_slice())
                             {
-                                info!("CliqueStage outbound publish error: {}", e);
-                                break;
+                                stats.publish_errors += 1;
+                                continue;
+                                // let mut slice: [u8; 32] = Default::default();
+                                // slice.copy_from_slice(&shred[0..32]);
+                                // info!(
+                                //     "CliqueStage outbound publish error: {} shred.len {} shred[0..32] {:x?}",
+                                //     e,
+                                //     shred.len(),
+                                //     slice
+                                // );
+                                // break;
                             }
                         }
                     }
@@ -178,18 +230,20 @@ impl CliqueStage {
                                     message,
                                 },
                             )) => {
-                                trace!(
-                                    "CliqueStage inbound gossipsub message.data.len={}",
-                                    message.data.len()
-                                );
+                                stats.shreds_inbound += 1;
+                                trace!("CliqueStage inbound gossipsub message.data.len={}", message.data.len());
                                 let mut packet_bytes = [0u8; PACKET_DATA_SIZE];
                                 packet_bytes[0..message.data.len()].copy_from_slice(&message.data);
-                                let mut packet = Packet::new(packet_bytes, Meta::default());
-                                packet.meta_mut().size = message.data.len();
+                                let mut packet = Packet::new(
+                                    packet_bytes,
+                                    Meta::default());
+                                let mut meta = packet.meta_mut();
+                                meta.size = message.data.len();
+                                meta.flags = PacketFlags::FORWARDED;
                                 let uni_batch = PacketBatch::new(vec![packet]);
                                 clique_inbound_sender
-                                    .send(uni_batch)
-                                    .expect("CliqueStage send inbound");
+                                .send(uni_batch)
+                                .expect("CliqueStage send inbound");
                             }
                             SwarmEvent::Behaviour(SolanaCliqueBehaviourEvent::Ping(event)) => {
                                 match event {

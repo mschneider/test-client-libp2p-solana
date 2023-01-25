@@ -16,7 +16,10 @@ rand = "0.7.0"
 simplelog = "0.12.0"
 
 libp2p = { path = "../rust-libp2p", features=["async-std", "gossipsub", "identify", "macros", "noise", "ping", "tcp", "yamux"] }
-solana-sdk = { version = "1.15.0", path = "../solana/sdk" }
-solana-perf = { version = "1.15.0", path = "../solana/perf" }
+solana-core = { version = "1.15.0", path = "../solana/core" }
 solana-logger = { version = "1.15.0", path = "../solana/logger" }
 solana-metrics = { version = "1.15.0", path = "../solana/metrics" }
+solana-perf = { version = "1.15.0", path = "../solana/perf" }
+solana-pubsub-client = { version = "1.15.0", path = "../solana/pubsub-client" }
+solana-sdk = { version = "1.15.0", path = "../solana/sdk" }
+solana-streamer = { version = "1.15.0", path = "../solana/streamer" }

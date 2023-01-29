@@ -4,7 +4,7 @@ use std::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
     },
-    thread::{Builder, JoinHandle},
+    thread::{sleep, Builder, JoinHandle},
     time::Duration,
 };
 #[macro_use]
@@ -12,30 +12,55 @@ extern crate log;
 #[macro_use]
 extern crate solana_metrics;
 
+use clap::Parser;
+use crossbeam_channel::{select, unbounded};
+use solana_client::rpc_client::RpcClient;
 use solana_core::clique_stage::CliqueStage;
-
-use crossbeam_channel::{select, tick, unbounded};
-use rand::RngCore;
-use solana_perf::packet::{PacketBatchRecycler, PACKET_DATA_SIZE};
-use solana_pubsub_client::pubsub_client::PubsubClient;
-use solana_sdk::signature::Keypair;
+use solana_perf::packet::PacketBatchRecycler;
+use solana_sdk::{commitment_config::CommitmentConfig, signature::Keypair};
 use solana_streamer::{
     socket::SocketAddrSpace,
     streamer::{self, StreamerReceiveStats},
 };
 
-fn slot_subscriber(exit: Arc<AtomicBool>, slot: Arc<AtomicU64>) -> JoinHandle<()> {
-    let (_subscription, receiver) =
-        PubsubClient::slot_subscribe(&"ws://api.mainnet-beta.solana.com/")
-            .expect("subscribe to slot updates");
+/// solana clique stage test client
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Address to bind to
+    #[arg(short, long)]
+    bind_addr: String,
+
+    /// TCP port for receiving gossip data
+    #[arg(short, long, default_value_t = 5678)]
+    gossip_port: u16,
+
+    /// UDP port for receiving shred data
+    #[arg(short, long, default_value_t = 5679)]
+    shred_port: usize,
+
+    /// Number of threads for shred transmission
+    #[arg(short, long, default_value_t = 8)]
+    num_retransmit_threads: usize,
+
+    /// List of HOST:PORT addresses to connect to
+    #[arg(short='p', long, num_args(0..))]
+    bootstrap_peers: Option<Vec<String>>,
+}
+
+fn slot_poller(exit: Arc<AtomicBool>, slot: Arc<AtomicU64>) -> JoinHandle<()> {
+    let rpc = RpcClient::new("https://api.testnet.solana.com");
+    let commitment = CommitmentConfig::processed();
 
     Builder::new()
-        .name("slotSubscribe".to_string())
+        .name("slotPoll".to_string())
         .spawn(move || {
             while !exit.load(Ordering::Relaxed) {
-                if let Ok(slot_info) = receiver.recv_timeout(Duration::from_secs(1)) {
-                    slot.store(slot_info.slot, Ordering::Relaxed);
+                match rpc.get_slot_with_commitment(commitment) {
+                    Ok(new_slot) => slot.store(new_slot, Ordering::Relaxed),
+                    Err(e) => error!("slot_poller {:?}", e),
                 }
+                sleep(Duration::from_millis(100));
             }
         })
         .expect("spawn slotSubscribe")
@@ -44,18 +69,22 @@ fn slot_subscriber(exit: Arc<AtomicBool>, slot: Arc<AtomicU64>) -> JoinHandle<()
 fn main() {
     solana_logger::setup_with_default("info");
 
+    let args: Args = Args::parse();
     let exit = Arc::new(AtomicBool::default());
     let slot = Arc::new(AtomicU64::default());
-    let _slot_subscribe_hdl = slot_subscriber(exit.clone(), slot.clone());
+    let _slot_poller_hdl = slot_poller(exit.clone(), slot.clone());
+    let slot_query = move || slot.load(Ordering::Relaxed);
 
-    let clique_inbound_addr = "5.62.126.197:5678".parse().expect("valid inbound addr");
-    let clique_inbound_socket =
-        Arc::new(UdpSocket::bind(clique_inbound_addr).expect("bind to inbound addr"));
+    let clique_inbound_addr = format!("{}:{}", args.bind_addr, args.shred_port)
+        .parse()
+        .expect("valid bind addr and shred port");
+    info!("listen for shreds at {:?}", clique_inbound_addr);
+    let clique_inbound_socket = UdpSocket::bind(clique_inbound_addr).expect("bind to shred addr");
     let (clique_inbound_sender, clique_inbound_receiver) = unbounded();
 
     let receiver_stats = Arc::new(StreamerReceiveStats::new("shred_receiver"));
     let _shred_receiver_hdl = streamer::receiver(
-        clique_inbound_socket,
+        Arc::new(clique_inbound_socket),
         exit.clone(),
         clique_inbound_sender,
         PacketBatchRecycler::warmed(100, 1024),
@@ -67,28 +96,44 @@ fn main() {
 
     let (clique_outbound_sender, clique_outbound_receiver) = unbounded();
     let clique_outbound_sockets = Arc::new(
-        (0..8)
+        (0..args.num_retransmit_threads)
             .map(|_| UdpSocket::bind("0.0.0.0:0").expect("bind outbound socket to random port"))
             .collect(),
     );
-    let exit = Default::default();
     let identity = Arc::new(Keypair::new());
 
-    let slot_query = move || slot.load(Ordering::Relaxed);
+    let bind_addr = format!("{}:{}", args.bind_addr, args.gossip_port)
+        .parse()
+        .expect("valid bind addr and gossip port");
+    info!("listen for gossip at {:?}", bind_addr);
+
+    let bootstrap_peers = args
+        .bootstrap_peers
+        .unwrap_or_default()
+        .iter()
+        .map(|peer| peer.parse().expect("valid peer addr"))
+        .collect();
+
+    info!("waiting for slot subscription to receive the first slot");
+    while slot_query() == 0 {
+        std::thread::sleep(Duration::from_millis(100))
+    }
+
     let _clique_stage = CliqueStage::new(
+        bind_addr,
+        Arc::new(bootstrap_peers),
         clique_outbound_receiver,
         clique_outbound_sockets,
-        exit,
+        exit.clone(),
         identity,
         clique_inbound_addr,
         SocketAddrSpace::Global,
-        slot_query.clone()
+        slot_query.clone(),
     );
 
+    info!("client ready at slot {}", slot_query());
 
-    info!("select loop");
-
-    loop {
+    while !exit.load(Ordering::Relaxed) {
         select! {
             recv(clique_inbound_receiver) -> maybe_batch => {
                 if let Ok(batch) = maybe_batch {

@@ -1065,7 +1065,7 @@ checksum = "71655c45cb9845d3270c9d6df84ebe72b4dad3c2ba3f7023ad47c144e4e473a5"
 dependencies = [
  "atty",
  "bitflags",
- "clap_lex",
+ "clap_lex 0.2.4",
  "indexmap",
  "once_cell",
  "strsim 0.10.0",
@@ -1074,10 +1074,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap"
+version = "4.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f13b9c79b5d1dd500d20ef541215a6423c75829ef43117e1b4d17fd8af0b5d76"
+dependencies = [
+ "bitflags",
+ "clap_derive",
+ "clap_lex 0.3.1",
+ "is-terminal",
+ "once_cell",
+ "strsim 0.10.0",
+ "termcolor",
+]
+
+[[package]]
+name = "clap_derive"
+version = "4.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "684a277d672e91966334af371f1a7b5833f9aa00b07c84e92fbce95e00208ce8"
+dependencies = [
+ "heck 0.4.0",
+ "proc-macro-error",
+ "proc-macro2 1.0.49",
+ "quote 1.0.23",
+ "syn 1.0.107",
+]
+
+[[package]]
 name = "clap_lex"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2850f2f5a82cbf437dd5af4d49848fbdfc27c157c3d010345776f952765261c5"
+dependencies = [
+ "os_str_bytes",
+]
+
+[[package]]
+name = "clap_lex"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "783fe232adfca04f90f56201b26d79682d4cd2625e0bc7290b95123afe558ade"
 dependencies = [
  "os_str_bytes",
 ]
@@ -1689,6 +1726,27 @@ dependencies = [
  "log",
  "regex",
  "termcolor",
+]
+
+[[package]]
+name = "errno"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f639046355ee4f37944e44f60642c6f3a7efa3cf6b78c78a0d989a8ce6c396a1"
+dependencies = [
+ "errno-dragonfly",
+ "libc",
+ "winapi 0.3.9",
+]
+
+[[package]]
+name = "errno-dragonfly"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa68f1b12764fab894d2755d2518754e71b4fd80ecfb822714a1206c2aab39bf"
+dependencies = [
+ "cc",
+ "libc",
 ]
 
 [[package]]
@@ -2500,6 +2558,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "io-lifetimes"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7d6c6f8c91b4b9ed43484ad1a938e393caf35960fce7f82a040497207bd8e9e"
+dependencies = [
+ "libc",
+ "windows-sys",
+]
+
+[[package]]
 name = "ipconfig"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2516,6 +2584,18 @@ name = "ipnet"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11b0d96e660696543b251e58030cf9787df56da39dab19ad60eae7353040917e"
+
+[[package]]
+name = "is-terminal"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28dfb6c8100ccc63462345b67d1bbc3679177c75ee4bf59bf29c8b1d110b8189"
+dependencies = [
+ "hermit-abi 0.2.6",
+ "io-lifetimes",
+ "rustix",
+ "windows-sys",
+]
 
 [[package]]
 name = "itertools"
@@ -2740,18 +2820,46 @@ dependencies = [
  "futures-timer",
  "getrandom 0.2.8",
  "instant",
- "libp2p-core",
- "libp2p-dns",
- "libp2p-gossipsub",
- "libp2p-identify",
- "libp2p-mdns",
- "libp2p-metrics",
- "libp2p-noise",
- "libp2p-ping",
- "libp2p-quic",
- "libp2p-swarm",
- "libp2p-tcp",
- "libp2p-yamux",
+ "libp2p-core 0.39.0",
+ "libp2p-dns 0.39.0",
+ "libp2p-gossipsub 0.44.0",
+ "libp2p-identify 0.42.0",
+ "libp2p-mdns 0.43.0",
+ "libp2p-metrics 0.12.0",
+ "libp2p-noise 0.42.0",
+ "libp2p-ping 0.42.0",
+ "libp2p-quic 0.7.0-alpha.2",
+ "libp2p-swarm 0.42.0",
+ "libp2p-tcp 0.39.0",
+ "libp2p-yamux 0.43.0",
+ "multiaddr",
+ "parking_lot 0.12.1",
+ "pin-project",
+ "smallvec",
+]
+
+[[package]]
+name = "libp2p"
+version = "0.51.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "bytes",
+ "futures 0.3.25",
+ "futures-timer",
+ "getrandom 0.2.8",
+ "instant",
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-dns 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-gossipsub 0.44.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-identify 0.42.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-mdns 0.43.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-metrics 0.12.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-noise 0.42.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-ping 0.42.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-quic 0.7.0-alpha.2 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-swarm 0.42.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-tcp 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-yamux 0.43.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "multiaddr",
  "parking_lot 0.12.1",
  "pin-project",
@@ -2773,14 +2881,46 @@ dependencies = [
  "log",
  "multiaddr",
  "multihash",
- "multistream-select",
+ "multistream-select 0.12.1",
  "once_cell",
  "parking_lot 0.12.1",
  "pin-project",
  "prost 0.11.5",
  "prost-build 0.11.5",
  "rand 0.8.5",
- "rw-stream-sink",
+ "rw-stream-sink 0.3.0",
+ "sha2 0.10.6",
+ "smallvec",
+ "thiserror",
+ "unsigned-varint",
+ "void",
+ "zeroize",
+]
+
+[[package]]
+name = "libp2p-core"
+version = "0.39.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "asn1_der",
+ "bs58",
+ "ed25519-dalek",
+ "either",
+ "fnv",
+ "futures 0.3.25",
+ "futures-timer",
+ "instant",
+ "log",
+ "multiaddr",
+ "multihash",
+ "multistream-select 0.12.1 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "once_cell",
+ "parking_lot 0.12.1",
+ "pin-project",
+ "prost 0.11.5",
+ "prost-build 0.11.5",
+ "rand 0.8.5",
+ "rw-stream-sink 0.3.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "sha2 0.10.6",
  "smallvec",
  "thiserror",
@@ -2795,7 +2935,21 @@ version = "0.39.0"
 dependencies = [
  "async-std-resolver",
  "futures 0.3.25",
- "libp2p-core",
+ "libp2p-core 0.39.0",
+ "log",
+ "parking_lot 0.12.1",
+ "smallvec",
+ "trust-dns-resolver",
+]
+
+[[package]]
+name = "libp2p-dns"
+version = "0.39.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "async-std-resolver",
+ "futures 0.3.25",
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "log",
  "parking_lot 0.12.1",
  "smallvec",
@@ -2814,13 +2968,42 @@ dependencies = [
  "futures 0.3.25",
  "hex_fmt",
  "instant",
- "libp2p-core",
- "libp2p-swarm",
+ "libp2p-core 0.39.0",
+ "libp2p-swarm 0.42.0",
  "log",
  "prometheus-client",
  "prost 0.11.5",
  "prost-build 0.11.5",
- "prost-codec",
+ "prost-codec 0.3.0",
+ "rand 0.8.5",
+ "regex",
+ "sha2 0.10.6",
+ "smallvec",
+ "thiserror",
+ "unsigned-varint",
+ "wasm-timer",
+]
+
+[[package]]
+name = "libp2p-gossipsub"
+version = "0.44.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "asynchronous-codec",
+ "base64 0.20.0",
+ "byteorder",
+ "bytes",
+ "fnv",
+ "futures 0.3.25",
+ "hex_fmt",
+ "instant",
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-swarm 0.42.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "log",
+ "prometheus-client",
+ "prost 0.11.5",
+ "prost-build 0.11.5",
+ "prost-codec 0.3.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "rand 0.8.5",
  "regex",
  "sha2 0.10.6",
@@ -2837,13 +3020,33 @@ dependencies = [
  "asynchronous-codec",
  "futures 0.3.25",
  "futures-timer",
- "libp2p-core",
- "libp2p-swarm",
+ "libp2p-core 0.39.0",
+ "libp2p-swarm 0.42.0",
  "log",
  "lru 0.8.1",
  "prost 0.11.5",
  "prost-build 0.11.5",
- "prost-codec",
+ "prost-codec 0.3.0",
+ "smallvec",
+ "thiserror",
+ "void",
+]
+
+[[package]]
+name = "libp2p-identify"
+version = "0.42.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "asynchronous-codec",
+ "futures 0.3.25",
+ "futures-timer",
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-swarm 0.42.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "log",
+ "lru 0.8.1",
+ "prost 0.11.5",
+ "prost-build 0.11.5",
+ "prost-codec 0.3.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "smallvec",
  "thiserror",
  "void",
@@ -2857,8 +3060,27 @@ dependencies = [
  "data-encoding",
  "futures 0.3.25",
  "if-watch",
- "libp2p-core",
- "libp2p-swarm",
+ "libp2p-core 0.39.0",
+ "libp2p-swarm 0.42.0",
+ "log",
+ "rand 0.8.5",
+ "smallvec",
+ "socket2",
+ "trust-dns-proto",
+ "void",
+]
+
+[[package]]
+name = "libp2p-mdns"
+version = "0.43.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "async-io",
+ "data-encoding",
+ "futures 0.3.25",
+ "if-watch",
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-swarm 0.42.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "log",
  "rand 0.8.5",
  "smallvec",
@@ -2871,11 +3093,24 @@ dependencies = [
 name = "libp2p-metrics"
 version = "0.12.0"
 dependencies = [
- "libp2p-core",
- "libp2p-gossipsub",
- "libp2p-identify",
- "libp2p-ping",
- "libp2p-swarm",
+ "libp2p-core 0.39.0",
+ "libp2p-gossipsub 0.44.0",
+ "libp2p-identify 0.42.0",
+ "libp2p-ping 0.42.0",
+ "libp2p-swarm 0.42.0",
+ "prometheus-client",
+]
+
+[[package]]
+name = "libp2p-metrics"
+version = "0.12.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-gossipsub 0.44.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-identify 0.42.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-ping 0.42.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-swarm 0.42.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "prometheus-client",
 ]
 
@@ -2886,7 +3121,29 @@ dependencies = [
  "bytes",
  "curve25519-dalek 3.2.1",
  "futures 0.3.25",
- "libp2p-core",
+ "libp2p-core 0.39.0",
+ "log",
+ "once_cell",
+ "prost 0.11.5",
+ "prost-build 0.11.5",
+ "rand 0.8.5",
+ "sha2 0.10.6",
+ "snow",
+ "static_assertions",
+ "thiserror",
+ "x25519-dalek",
+ "zeroize",
+]
+
+[[package]]
+name = "libp2p-noise"
+version = "0.42.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "bytes",
+ "curve25519-dalek 3.2.1",
+ "futures 0.3.25",
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "log",
  "once_cell",
  "prost 0.11.5",
@@ -2907,8 +3164,23 @@ dependencies = [
  "futures 0.3.25",
  "futures-timer",
  "instant",
- "libp2p-core",
- "libp2p-swarm",
+ "libp2p-core 0.39.0",
+ "libp2p-swarm 0.42.0",
+ "log",
+ "rand 0.8.5",
+ "void",
+]
+
+[[package]]
+name = "libp2p-ping"
+version = "0.42.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "futures 0.3.25",
+ "futures-timer",
+ "instant",
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-swarm 0.42.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "log",
  "rand 0.8.5",
  "void",
@@ -2923,8 +3195,28 @@ dependencies = [
  "futures 0.3.25",
  "futures-timer",
  "if-watch",
- "libp2p-core",
- "libp2p-tls",
+ "libp2p-core 0.39.0",
+ "libp2p-tls 0.1.0-alpha.2",
+ "log",
+ "parking_lot 0.12.1",
+ "quinn-proto 0.9.2",
+ "rand 0.8.5",
+ "rustls 0.20.7",
+ "thiserror",
+]
+
+[[package]]
+name = "libp2p-quic"
+version = "0.7.0-alpha.2"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "async-std",
+ "bytes",
+ "futures 0.3.25",
+ "futures-timer",
+ "if-watch",
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-tls 0.1.0-alpha.2 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "log",
  "parking_lot 0.12.1",
  "quinn-proto 0.9.2",
@@ -2943,8 +3235,29 @@ dependencies = [
  "futures 0.3.25",
  "futures-timer",
  "instant",
- "libp2p-core",
- "libp2p-swarm-derive",
+ "libp2p-core 0.39.0",
+ "libp2p-swarm-derive 0.31.0",
+ "log",
+ "pin-project",
+ "rand 0.8.5",
+ "smallvec",
+ "thiserror",
+ "void",
+]
+
+[[package]]
+name = "libp2p-swarm"
+version = "0.42.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "async-std",
+ "either",
+ "fnv",
+ "futures 0.3.25",
+ "futures-timer",
+ "instant",
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
+ "libp2p-swarm-derive 0.31.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "log",
  "pin-project",
  "rand 0.8.5",
@@ -2963,6 +3276,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libp2p-swarm-derive"
+version = "0.31.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "heck 0.4.0",
+ "quote 1.0.23",
+ "syn 1.0.107",
+]
+
+[[package]]
 name = "libp2p-tcp"
 version = "0.39.0"
 dependencies = [
@@ -2971,7 +3294,22 @@ dependencies = [
  "futures-timer",
  "if-watch",
  "libc",
- "libp2p-core",
+ "libp2p-core 0.39.0",
+ "log",
+ "socket2",
+]
+
+[[package]]
+name = "libp2p-tcp"
+version = "0.39.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "async-io",
+ "futures 0.3.25",
+ "futures-timer",
+ "if-watch",
+ "libc",
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "log",
  "socket2",
 ]
@@ -2982,7 +3320,24 @@ version = "0.1.0-alpha.2"
 dependencies = [
  "futures 0.3.25",
  "futures-rustls",
- "libp2p-core",
+ "libp2p-core 0.39.0",
+ "rcgen",
+ "ring",
+ "rustls 0.20.7",
+ "thiserror",
+ "webpki 0.22.0",
+ "x509-parser",
+ "yasna",
+]
+
+[[package]]
+name = "libp2p-tls"
+version = "0.1.0-alpha.2"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "futures 0.3.25",
+ "futures-rustls",
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "rcgen",
  "ring",
  "rustls 0.20.7",
@@ -2997,7 +3352,20 @@ name = "libp2p-yamux"
 version = "0.43.0"
 dependencies = [
  "futures 0.3.25",
- "libp2p-core",
+ "libp2p-core 0.39.0",
+ "log",
+ "parking_lot 0.12.1",
+ "thiserror",
+ "yamux",
+]
+
+[[package]]
+name = "libp2p-yamux"
+version = "0.43.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "futures 0.3.25",
+ "libp2p-core 0.39.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "log",
  "parking_lot 0.12.1",
  "thiserror",
@@ -3091,6 +3459,12 @@ name = "linked-hash-map"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
+
+[[package]]
+name = "linux-raw-sys"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f051f77a7c8e6957c0696eac88f26b0117e54f52d3fc682ab19397a8812846a4"
 
 [[package]]
 name = "lock_api"
@@ -3357,6 +3731,19 @@ checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 [[package]]
 name = "multistream-select"
 version = "0.12.1"
+dependencies = [
+ "bytes",
+ "futures 0.3.25",
+ "log",
+ "pin-project",
+ "smallvec",
+ "unsigned-varint",
+]
+
+[[package]]
+name = "multistream-select"
+version = "0.12.1"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
 dependencies = [
  "bytes",
  "futures 0.3.25",
@@ -4217,6 +4604,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "prost-codec"
+version = "0.3.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
+dependencies = [
+ "asynchronous-codec",
+ "bytes",
+ "prost 0.11.5",
+ "thiserror",
+ "unsigned-varint",
+]
+
+[[package]]
 name = "prost-derive"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4705,6 +5104,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustix"
+version = "0.36.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4fdebc4b395b7fbb9ab11e462e20ed9051e7b16e42d24042c776eca0ac81b03"
+dependencies = [
+ "bitflags",
+ "errno",
+ "io-lifetimes",
+ "libc",
+ "linux-raw-sys",
+ "windows-sys",
+]
+
+[[package]]
 name = "rustls"
 version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4768,6 +5181,16 @@ checksum = "5583e89e108996506031660fe09baa5011b9dd0341b89029313006d1fb508d70"
 [[package]]
 name = "rw-stream-sink"
 version = "0.3.0"
+dependencies = [
+ "futures 0.3.25",
+ "pin-project",
+ "static_assertions",
+]
+
+[[package]]
+name = "rw-stream-sink"
+version = "0.3.0"
+source = "git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat#67bf9e84297e8c42eaab3e7b0101fc68a8a31622"
 dependencies = [
  "futures 0.3.25",
  "pin-project",
@@ -5386,7 +5809,7 @@ dependencies = [
  "histogram",
  "itertools",
  "lazy_static",
- "libp2p",
+ "libp2p 0.51.0 (git+https://github.com/mschneider/rust-libp2p/?branch=solana-compat)",
  "log",
  "lru 0.7.8",
  "min-max-heap",
@@ -6882,18 +7305,19 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "async-trait",
+ "clap 4.1.4",
  "crossbeam-channel",
  "futures 0.3.25",
  "futures-lite",
- "libp2p",
+ "libp2p 0.51.0",
  "log",
  "rand 0.7.3",
  "simplelog",
+ "solana-client",
  "solana-core",
  "solana-logger 1.15.0",
  "solana-metrics",
  "solana-perf",
- "solana-pubsub-client",
  "solana-sdk 1.15.0",
  "solana-streamer",
 ]

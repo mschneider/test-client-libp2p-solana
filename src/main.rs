@@ -1,5 +1,5 @@
 use std::{
-    net::{SocketAddr, UdpSocket},
+    net::UdpSocket,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
@@ -9,7 +9,6 @@ use std::{
 };
 #[macro_use]
 extern crate log;
-#[macro_use]
 extern crate solana_metrics;
 
 use clap::Parser;
